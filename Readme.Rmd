@@ -1,0 +1,206 @@
+---
+title: "UK Cars Seasonal Tends in Production 1997-2005"
+author: "Albert Alva"
+date: "November 28, 2016"
+#output: word_document
+output:
+HTML:
+Keep_md: True
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+                      R Markdown This is an R Markdown document.
+
+#UK Passenger Car Production 1977 to 2005; A study of seasonal effect on production
+
+Researchers are interested to know if there is a change in the the number of autos produced each year from 1977 to 2005 and if there is a seasonal effect to auto production in England. 
+Investopedia.com defines seasonality as a characteristic of a time series in which the data experiences regular and predictable changes that recur every calendar year. Any predictable change or pattern in a time series that recurs or repeats over a one-year period can be said to be seasonal. Seasonal effects are different from cyclical effects, as seasonal cycles are contained within one calendar year, while cyclical effects, such as boosted sales due to low unemployment rates, can span time periods shorter or longer than one calendar year(1).
+A trend is the general direction of a market or of the price of an asset, and trends can vary in length from short to intermediate, to long term(2).  Short term may be days or months, long term may be 10 to 15 
+
+## The Hypotheses
+There are two hypotheses being tested. The first is was there a change trend in production over time and the second being, was there seasonality in the distribution.  The null hypotheses are no change in production over time and no seasonality in the data.
+
+
+## Methods
+This research was conducted using R version 3.3.2 (2016-10-31), Platform: x86_64-w64-mingw32/x64 (64-bit),Running under: Windows >= 8 x64 (build 9200).  The data was obtained from the fpp package.
+
+### Libraries Used
+
+*   **psych**    The **pych** package contained a summary function
+*   **fpp**      The **fpp** package contained the data and forecasting tools
+*   **Hmisc**    The **Hmisc** package contained functions for graphing tick marks
+  
+###Time Series
+The time series data consisted of quarterly counts of automobiles manufactured from 1977 to 2005. 
+
+### The Data
+The data was obtained by downloading the fpp package in r-studio.  The fpp package contains data for "Forecasting: principles and practice"Description: All data sets required for the examples and exercises in the book "Forecasting: principles and practice" by Rob J Hyndman and George Athanasopoulos.
+```{r Getting Data, include=FALSE}
+# This code chunk loads the libraries and obtains the data using the data() function
+
+
+
+library(fpp, quietly = TRUE) 
+library(Hmisc, quietly = TRUE)
+library(psych, quietly = TRUE)
+library(zoo, quietly = TRUE)
+
+data(ukcars)
+str(ukcars)
+
+```
+##Exploratory Data Analyis
+
+The data is an r time-series.  Ukcars has 113 quarters of passenger car production counts from the 1st quarter of 1977 to the 1st quarter of 2005. The average production was 333.48 cars with a standard deviation of 78.56 cars.  The lowest production of 171.15 cars was in the 3rd quarter of 1979 and the highest of 494.31 in the 1st quarter of 2000.
+   
+####Normality
+
+*  The measure of kurtosis indicates a platykurtic distribution,(-0.99).  The mean and median are only 1.62 cars apart (333.48, 335.11) or .02 standard deviations.  This would fail to indicate considerable skewedness.
+*   The histogram of the data shows a multi-modal distribution with peaks at approx. 250 and 375 cars (see figure 1).
+*   The box plot showed no abnormality (see figure2).
+*   The qq plot also indicated a lack of symetry(see figure 3).  The beginning of the distribution was above the line and the top of the distribution was below the line.   Distribution is being effected by outliers on both ends of the distribution.  The plot agrees, the distribution is platykurtic, with the data density packed between -1 and 1 quantiles from the center of the distribution.
+*   The Shapiro-Wilk normality test agreed with the interpretation of the graphs.  The p value for the Wilk test was p= 0.04366.  We reject the null hypotheses that the sample is from a normally distributed population.
+A log transformation of the data might help center the distribution.
+
+$$  $$**Table 1 Summary of Time Series**
+```{r ExploratoryAnalysis,echo=FALSE}
+knitr::kable(describe(ukcars),digits = 2,align = 'c',format = 'markdown',caption =  "Summary of Time Series")
+
+par(fg='dark blue', col.axis= "dark blue", pty = "m",    cex.lab = .75, cex.axis = .7, col.lab = "dark blue" , col.main= "dark blue", mfrow= c(2,2))
+
+hist(ukcars, main = "Figure 1\n Histogram of UKcars",xlab='Cars in Thousands', prob=TRUE, 12)   # histogram    
+lines(density(ukcars), col="red")     # smooth it - ?density for details 
+boxplot(ukcars,main = "Figure 2\n Boxplot UKcars",xlab='Cars in Thousands')
+qqnorm(ukcars,main = "Figure 3\n QQ Plot UKcars")             # normal Q-Q plot  
+qqline(ukcars,col="red")             # add a line    
+plot(ukcars,xlab="", ylab="", type='l')
+
+grid(lty=1, col=grey(.75)) 
+title( main="Figure 4\n UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, minor.tick(nx=5, ny=1, tick.ratio=.5), cex.lab= .75)
+shapiro.test(ukcars)
+```
+####Trend and Seasonality
+
+The Graph in figure 4 shows a trend upward in production starting from 1980 when production was between 200 and 300 thousand cars through the year 2000 when production was between 300 and 500 thousand autos.  There does seem to be a seasonal fluctuation with hills and valleys in the production within the same year, year over year.
+
+####Decomposing the time series to analyize seasonal effect
+*  The time series was decomposed using the **stl** function in r studio.  Decompose a time series into seasonal, trend and irregular components using moving averages.
+*  The plot of the decomposition of the data shows both a trend and a seasonal variance.  Comparing the original data to the seasonal distribution.
+
+The decomposition of UKCars shows the observed value and the sources of fluctuation in the data.  There appears to be both an upward trend and a seasonal effect.  The random fluctuation show the data could be modeled better.  The decomposition does agree that there is both a seasonal effect and an upward trend in manufacturing.
+
+```{r 'decomposeUKCars',echo=FALSE}
+library(Hmisc, quietly = TRUE)
+library(fpp, quietly = TRUE)
+fit <- stl(ukcars, s.window=5)
+par(fg = "dark blue", col.axis="dark blue", bg="tan",pty = 'm',cex.lab=.05, col.lab = "green")
+plot(fit)
+     title( main=" UK Passenger Car Prodution 1977 to 2005",sub="Figure 6 Seaonal Adjusted Decomposed into additive effect model" ,col.lab = "green",   cex.main = 1, font.main= 2, font.sub = 4, col.main= "dark blue", cex.sub = .75, col.sub = "dark blue")
+```
+     
+###Seasonal Adjusted Data vs. Non-Adjusted Data
+A seasonal adjustment is added using the **seaadj()** function 
+Figure 7 shows the seasonally adjusted ukcars in black and the non-adjusted ukcars in light blue.  The seasonal adjustment smoothed the both the peaks and valleys thus removing the seasonal effect.
+
+```{r SeasonalAdjustment,echo=FALSE}     
+library(fpp, quietly = TRUE)
+library(Hmisc, quietly = TRUE)
+eeadj <- seasadj(fit)
+par(fg = "dark blue", col.axis="dark blue", bg='tan')
+plot(eeadj, xlab="", ylab="")
+grid(lty=1, col=grey(.75)) 
+lines(ukcars,col="light blue")
+ title( main="UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",sub="Figure 7 Seasonally Ajusted VS. Non-Adjusted Time Series" , cex.sub= .75, col.sub= "dark blue", col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, col.main= "dark blue", minor.tick(nx=5, ny=1, tick.ratio=.5))
+legend("bottomright",inset = .02,c("Seasonal Ajusted Time Series (SATS)" ,"Non-Adjusted Time Series"), fill= c('dark blue','light blue'), horiz=FALSE, cex = 0.5)
+```
+
+```{r outliers, echo= FALSE }
+
+ukcars2 <- ts(c(ukcars[1:54],ukcars[55]+500,ukcars[56:113]),1977,2005,4)
+ukcars3 <- ts(c(ukcars[1:5],ukcars[6]+500,ukcars[7:113]),1977,2005,4)
+ukcars4 <- ts(c(ukcars[1:110],ukcars[111]+500,ukcars[112:113]),1977,2005,4)
+
+
+fitd2 <- decompose(ukcars2)
+fitd3 <- decompose(ukcars3)
+fitd4 <- decompose(ukcars4)
+
+
+eeadj2 <- seasadj(fitd2)
+eeadj3 <- seasadj(fitd3)
+eeadj4 <- seasadj(fitd4)
+```
+####Effects of Outliers on Seasonally Adjusted Time Series
+Figures 8 - 11 show the effects of an outlier in different parts of the distribution.
+* Outliers make the seasonal adjustment less effective, the resulting distributions had 
+more peaked hills and valleys.
+*The distribution seemed most effected by the outlier at the beginning.  It effected the rest of the distribution, especially at the high end.  
+*The middle outlier had effected the lower end but to lesser a degree then the lower outlier
+*The high outlier changed the distribution the lease.
+
+```{r, compare, echo=FALSE}
+
+par(fg = "dark blue", col.axis="dark blue", bg='tan',cex.axis=.75, pty="m")
+plot(eeadj,col='black',lwd=2,ylab="", xlab="")
+grid(lty=1, col=grey(.75)) 
+lines(eeadj2, col='blue',lwd=1)
+title( main="UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",sub="Figure 8 Seasonally Ajusted VS. Non-Adjusted Time Series" , cex.sub= .75, col.sub= "dark blue", col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, col.main= "dark blue", minor.tick(nx=5, ny=1, tick.ratio=.5))
+legend("bottomright",inset = .02,c("Seasonal Ajusted Time Series (SATS)" ,"SATS Outlier in middle of the distribution"), fill= c('black','dark blue'), horiz=FALSE, cex = 0.5)
+
+par(fg = "dark blue", col.axis="dark blue", bg='tan',cex.axis=.75, pty="m")
+plot(eeadj,col='black',lwd=2,ylab="", xlab="")
+grid(lty=1, col=grey(.75)) 
+lines(eeadj3, col='red',lwd=1)
+title( main="UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",sub="Figure 9 Seasonally Ajusted VS. Non-Adjusted Time Series" , cex.sub= .75, col.sub= "dark blue", col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, col.main= "dark blue", minor.tick(nx=5, ny=1, tick.ratio=.5))
+legend("bottomright",inset = .02,c("Seasonal Ajusted Time Series (SATS)" ,"SATS Outlier at the beginning of Distribution"), fill= c('black','red'), horiz=FALSE, cex = 0.5)
+
+
+par(fg = "dark blue", col.axis="dark blue", bg='tan',cex.axis=.75, pty="m")
+plot(eeadj,col='black',lwd=2,ylab="", xlab="")
+grid(lty=1, col=grey(.75)) 
+lines(eeadj4, col='green',lwd=1)
+title( main="UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",sub="Figure 10 Seasonally Ajusted VS. Non-Adjusted Time Series" , cex.sub= .75, col.sub= "dark blue", col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, col.main= "dark blue", minor.tick(nx=5, ny=1, tick.ratio=.5))
+legend("bottomright",inset = .02,c("Seasonal Ajusted Time Series (SATS)" ,"SATS Outlier at the end of Distribution"), fill= c('black','green'), horiz=FALSE, cex = 0.5)
+
+
+
+par(fg = "dark blue", col.axis="dark blue", bg='tan',cex.axis=.75, pty="m")
+plot(eeadj,col='black',lwd=3,ylab="", xlab="")
+grid(lty=1, col=grey(.75)) 
+lines(eeadj2, col='dark blue',lwd=1)
+lines(eeadj3, col='red',lwd=1)
+lines(eeadj4, col='green',lwd=1)
+title( main="UK Passenger Car Prodution\n 1977 to 2005",xlab=("Year of Production"), col.lab = "dark blue",sub="Figure 11 Seasonally Ajusted VS. Non-Adjusted Time Series" , cex.sub= .75, col.sub= "dark blue", col.axis = 'tan',ylab = "Passenger Cars Produced (in thousands)",cex.main = 1, font.main= 2, col.main= "dark blue", minor.tick(nx=5, ny=1, tick.ratio=.5))
+legend("bottomright",inset = .02,c("Seasonal Ajusted Time Series (SATS)" ,"SATS Outlier at the beginning of Distribution", "SATS Outlier in middle of the distribution", "SATS Outlier at the end of Distribution"), fill= c('black','red','dark blue' ,'green'), horiz=FALSE, cex = 0.5)
+```
+```{r, eval=FALSE, include=FALSE}
+
+
+mean(window(eeadj,1985,c(1985,4)))
+mean(window(eeadj,1995,c(1995,4)))
+mean(window(eeadj,1996,c(1996,4)))
+mean(window(eeadj,1997,c(1997,4)))
+mean(window(eeadj,1998,c(1998,4)))
+mean(window(eeadj,1999,c(1999,4)))
+mean(window(eeadj,2000,c(2000,4)))
+mean(window(eeadj,2001,c(2001,4)))
+mean(window(eeadj,2002,c(2002,4)))
+mean(window(eeadj,2003,c(2003,4)))
+mean(window(eeadj,2004,c(2004,4)))
+mean(window(eeadj,c(2004,3),c(2005,1)))
+
+```
+##Conclusions
+There was a long term upward trend between 1985 and 1999, producing 185 more cars in 1999 then in 1985, 446 and 261 respectively.  The upward trend reversed in 2000 with a short term downward trend through 2001, production 374, with the production falling to pre 1995 levels of 382 cars but rebounding through the end of 2004 ending at 412 cars.
+
+There was a seasonal effect shown by the decrease in productivity during the summat months, year over year.  This might be explained by the custom to take vacation during the summer months.
+
+##References
+
+1. Seasonality Definition
+   Investopediahttp://www.investopedia.com/terms/s/seasonality.asp#ixzz4R5xGo37j 
+
+2.Trend Definition
+  Investopedia http://www.investopedia.com/terms/t/trend.asp#ixzz4R5yAYr5z 
